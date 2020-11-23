@@ -1,0 +1,386 @@
+library(grid)
+library(ggplot2)
+library(openxlsx)
+library(plyr)
+library(extrafont)
+
+options(stringsAsFactors = F)
+font_import() #load Thai font only first time
+loadfonts()
+
+raw <- read.xlsx("/Users/ksongsom/OneDrive/IPST/4postgraduate/data_mod/สรุปจำนวนบัณฑิตที่รายงานตัว ตค62-กย63/0_ตารางสรุป.xlsx", sheet = 2, startRow =2, detectDates = T)
+head(raw)
+str(raw)
+
+#cleaning 
+#clean space
+gsub("^ ", "", gsub(" $", "", (" Team Name ")))
+raw <- as.data.frame(apply(raw,2,function(x)gsub("^ ", "", gsub(" $", "", (x)))))
+raw <- as.data.frame(apply(raw,2,function(x)gsub("^ ", "", gsub(" $", "", (x)))))
+
+
+#Questions
+end_date <- as.Date(Sys.Date())#as.Date("2020-09-30")
+
+#1 
+  #1.1 classify into five subjects
+  
+  table(raw$`สาขาวิชา`)
+  sum(is.na(raw$`สาขาวิชา`)) #check if missing
+  allsubject <- unique(raw$`สาขาวิชา`) #119 deep subjects
+  engsubject <- allsubject[grepl(paste(c(LETTERS, letters), collapse = "|"), allsubject)]
+        
+    #update keyword for subject
+        #Biology
+        bio_en <- c("Drug delivery and tissue engineering",
+          "Environmental Science",
+          "Entomology",
+          "Computational Biology",
+          "Genetics, Genomics and Bioinformatics",
+          "Palaeontology",
+          "Biological Information",
+          "Materials and Bioscience",
+          "Biological Oceanography",
+          "Plant and Microbial Biology",
+          "Neuroscience Research",
+          "Medical Sciences",
+          "Plant Pathology",
+          "Molecular Genetics and Precision Medicine",
+          "Medical Science",
+          "Environmental Sanitation",
+          "Quantitative Biology",
+          "Bioscience engineering",
+          "Biotechnology" ,
+          "Botany",
+          "Environmental Science and Engineering",
+          "Biological sciences",
+          "Cell and Molecular Biology (Plant Sciences)",
+          "Biological sciences",
+          "Bioproduction Science",
+          "International Marine Biological Resources" ,
+          "Biology",
+          "Plant Breeding",
+          "PhD Medicine (Imaging)",
+          "Bioengineering",
+          "Pathology and Medical Biology",
+          "Clinical Medicine Research"
+          )
+        bio_th <- c("กายวิภาคศาสตร์และชีววิทยาโครงสร้าง (นานาชาติ)",
+          "อายุรศาสตร์เขตร้อน",
+          "ชีววิทยา",
+          
+          "วิทยาศาสตร์ทางทะเล",
+          "สัตววิทยา",
+          "พันธุศาสตร์ระดับโมเลกุลเเละพันธุวิศวกรรมศาสตร์ (นานาชาติ)",
+          "วิศวกรรมชีวการแพทย์",
+          "เทคโนโลยีชีวภาพ",
+          "เทคโนโลยีชีวภาพเกษตร" ,
+          "จุลชีววิทยาทางอุตสาหกรรม" ,
+          "พันธุศาสตร์",
+          "ชีววิทยา (ความหลากหลายทางชีวภาพของพืช)",
+          "ชีววิทยาประยุกต์",
+          "วิทยาศาสตร์ชีวภาพ",
+          "กายวิภาคศาสตร์และชีววิทยาโครงสร้าง",
+          "วิทยาศาสตร์ชีวภาพประยุกต์",
+          "พฤกษศาสตร์"  ,
+          "สรีรวิทยา",
+          "จุลชีววิทยา",
+          "พิษวิทยาสิ่งแวดล้อม"     ,
+          "สรีรวิทยา (นานาชาติ)",
+          "นิเวศวิทยาอุตสาหกรรมและสิ่งแวดล้อม",
+          "ชีววิทยา (หลักสูตรนานาชาติ)",
+          "นิเวศวิทยาและชีววิทยาเชิงอนุรักษ์"
+          )
+        #Mathematics
+        mat_en <- c("Mathematics",
+          "Applied mathematics",
+          "Computer Science",
+          "Computing Research",
+          "Management Science and Engineering",
+          "Mathematical Finance",
+          "Applied Mathematics",
+          "Financial Mathematics",
+          "Computer Science (Data Science track)",
+          "Mathematical and Computing Science"
+          )
+        mat_th <- c("คณิตศาสตร์",
+          "คณิตศาสตร์ประยุกต์",
+          "คณิตศาสตร์ประยุกต์และวิทยาการคณนา"
+          )
+        
+        #Physics
+        phy_en <- c("Theoretical physics",
+          "Physics & Astronomy",
+          "Astrophysics",
+          "Physics",
+          "Atmospheric Physics",
+          "Astronomy & Astrophysics",
+          "Nuclear Energy and Nuclear Technique Engineering",
+          "Theoretical Physics"
+          )
+        phy_th <- c("ฟิสิกส์",
+          "วิศวกรรมนิวเคลียร์"
+          )
+        #Chemistry
+        che_en <- c("Materials Science",
+          "Physical chemistry",
+          "Chemistry",
+          "NanoEngineering",
+          "Organic Chemistry",
+          "Material Science",
+          "Applied Optics",
+          "materials science and engineering",
+          "material science and engineering",
+          "Materials Science and Engineering",
+          "Biological Materials",
+          "Organometallic and coordination chemistry , LHFA (Laboratory)",
+          "Inorganic Chemistry"
+          )
+        che_th <- c("เคมี",
+          
+          "วิทยาศาสตร์พอลิเมอร์",
+          "วิทยาศาสตร์และเทคโนโลยีพอลิเมอร์",
+          "วิทยาศาสตร์และวิศกรรมวัสดุ",
+          "วิทยาศาสตร์และวิศวกรรมวัสดุ",
+          "วิทยาศาสตร์นาโนและเทคโนโลยี",
+          "ปิโตรเคมีและวิทยาศาสตร์พอลิเมอร์",
+          "เคมีอนินทรีย์",
+          "เคมีอินทรีย์"
+          )
+        
+        #Geography
+        geo_en <- c("Earth Science and Engineering",
+          "Geophysics",
+          "Geology"
+          )
+        geo_th <- c("ธรณีวิทยา"
+          )
+        
+        #cross disciplinary 
+        cro_en <- c("Chemistry (chemical biology)",
+          "Chemical Engineering with Biotechnology",
+          "Atmosphere Ocean and Climate",
+          "Electrical Engineering and Computer Science",
+          "Electrical Engineering","Knowledge Science",
+          "Electrical and Electronic Engineering",
+          "Engineering", 
+          "Biomedical Engineering"
+          )
+          
+        cro_th <- c("การสอนวิทยาศาสตร์" ,"วิศวกรรมศาสตร์และเทคโนโลยี",
+          "วิศวกรรมไฟฟ้าและวัสดุ","ชีวเคมี")
+        
+        #check all deep subjects in the list
+        tochecksub <- c(bio_en, bio_th, mat_en, mat_th, phy_en, phy_th, che_en, che_th, geo_en, geo_th, cro_en, cro_th)
+        all(tochecksub %in% allsubject)
+        allsubject[!(allsubject %in% tochecksub)] #check which one needs to be updated
+        
+        
+        #add five subjects to dataframe
+        raw$fivesubjects <- ifelse(raw$`สาขาวิชา` %in% bio_en | raw$`สาขาวิชา` %in% bio_th, "Biology", 
+                                   ifelse(raw$`สาขาวิชา` %in%mat_en | raw$`สาขาวิชา` %in%mat_th, "Math", 
+                                          ifelse(raw$`สาขาวิชา` %in%phy_en | raw$`สาขาวิชา` %in%phy_th, "Physics", 
+                                                 ifelse(raw$`สาขาวิชา` %in%che_en | raw$`สาขาวิชา` %in%che_th, "Chemistry", 
+                                                        ifelse(raw$`สาขาวิชา` %in%geo_en | raw$`สาขาวิชา` %in%geo_th, "Geology", NA
+                                                        )))))
+        
+        raw$fivesubjects <- factor(raw$fivesubjects, levels = c("Math", "Physics", "Chemistry", "Biology", "Geology", "CrossDis"))
+        table(raw$fivesubjects)
+        sum(is.na(raw$fivesubjects))
+        
+        #update cross disciplinary based on keyword.งานวิจัย
+        
+        raw$`Keyword.งานวิจัย`[raw$`สาขาวิชา` %in% c(cro_en, cro_th)]
+        bio_res <- c("Neuro time series analysis Big data analysis Data mining High Frequency oscillation Epilepsy",
+                     "Biochemistry, Biotechnology, Molecular Biology, Cell culture, Bioreactor",
+                     "energy plasma Tokamak",
+                     "Plant Morphology, Plant Anatomy, Echinochloa Spores Morphology, Seedless Plants"
+                     )
+        mat_res <- c("A Framework for Synthesizing Transactional Database Implementations in a Proof Assistant",
+                     "Innovation and Technology Management, Financial Analysis, Fin-Tech",
+                     "Numerical weather modeling"
+                     )
+        phy_res <- c("Analog and Radio-Frequency Integrated Circuit Design - Radio-Frequency and mm-wave Power Amplifier",
+                     "Silicone Optical Technology (SOT), Flow injection analysis, compact optical device, polydimethylsiloxane (PDMS), silicone, iron determination, 3D printing, on-site analysis, high sensitive device")
+        che_res <- c("chemical biology, chemical proteomics, chemical probe design and synthesis, activity-based probe profiling, deubiquitinase inhibitor, drug target identification, protein post-translational modification, prenylation profiling",
+                     "L-amino acid oxidase/monooxygenase",
+                     "Biosensor, preventive health technology, stress detection",
+                     "Enzyme kinetic, Protein expression and purification, Biocatalysis",
+                     "Developmet of Electroactive Polymer Actuators for Next-generation Mirror: Live-Mirror",
+                     "Silver nanoprisms Colloidal chemical nanoparticle fabrication Polybenzoxazine Self-healing polymer",
+                     "SUPERCRITICAL FLUID CHROMATOGRAPHY/TANDEM MASS SPECTROMETRY/POLAR COMPOUND SEPARATION/SFC-ESI-MS/MS"
+                     )
+        geo_res <- c()
+        cro_res <- c("การจัดการเรียนรู้ตามแนวคิดสะเต็มศึกษา, ผลสัมฤทธิ์ทางการเรียน, เจตคติต่อการเรียน, วิจัยเชิงปฏิบัติการ",
+                     "Requirement Skills for Human Resource in Creative Businesses Effective Methods to Increase Value of Creative Economy Environment to Support Creative Thinking Support for Metacognitive Skills Learning for Sustainable Learning Environment to Promote P"
+                     )
+        
+        raw[is.na(raw$fivesubjects),]$fivesubjects <- ifelse(raw[is.na(raw$fivesubjects),]$`Keyword.งานวิจัย` %in% bio_res, "Biology", 
+                                                             ifelse(raw[is.na(raw$fivesubjects),]$`Keyword.งานวิจัย` %in%mat_res, "Math", 
+                                                                    ifelse(raw[is.na(raw$fivesubjects),]$`Keyword.งานวิจัย` %in%phy_res, "Physics", 
+                                                                           ifelse(raw[is.na(raw$fivesubjects),]$`Keyword.งานวิจัย` %in%che_res, "Chemistry", 
+                                                                                  ifelse(raw[is.na(raw$fivesubjects),]$`Keyword.งานวิจัย` %in%geo_res, "Geology", 
+                                                                                         ifelse(raw[is.na(raw$fivesubjects),]$`Keyword.งานวิจัย` %in%cro_res,"CrossDis", NA))))))
+        
+        raw[is.na(raw$fivesubjects),]
+        sum(is.na(raw$fivesubjects)) #if sum(is.na(raw$fivesubjects)) is not zero need to update the keyword
+        table(raw$fivesubjects)
+        
+        #calculate waiting time
+        raw$waitingdays <- as.integer(difftime(end_date, raw$`วันที่รายงานตัว`, units = "days"))
+        as.year(raw$waitingdays)
+        raw$`วันที่รายงานตัว`
+        
+        daystodate <- function(indate){
+          yy <- as.integer(indate/365)
+          mm <- as.integer((indate %% 365)/30)
+          dd <- as.integer((indate %% 365) %% 30)
+          paste(
+            ifelse(yy != 0, paste(yy, "ปี ", sep = " "), ""),
+            ifelse(mm != 0, paste(mm, "เดือน ", sep = " "), ""),
+            ifelse(dd != 0, paste(dd, "วัน", sep = " "), ""), 
+            sep = ""
+          )
+        } #function to convert days to year-month-day
+  
+        raw$waitingtime <- daystodate(raw$waitingdays)
+
+        raw$education <- gsub("กำลังศึกษาระดับ", "", raw$`วุฒิการศึกษา`)
+
+    
+        #1.X make a pie chart of how long fund recipients wait for a position by field and degree
+        
+        
+        #make bar graph of waiting time
+        fil_dat <- raw[!(grepl("postdoc", raw$สถานะ)),] #remove postdoc
+        fil_dat <- fil_dat[grepl("สำเร็จการศึกษา", fil_dat$`สถานะการศึกษา`),] #keep only graduated
+        
+        fil_dat$domestic <- ifelse(fil_dat$ประเทศ == "ราชอาณาจักรไทย", "domestic", "international")
+        table(fil_dat$`สถานะการศึกษา`)
+        
+        
+        #X1 ระหว่างปริญญา
+        data_summary <- function(data, varname, groupnames){
+          summary_func <- function(x, col){
+            c(mean = mean(x[[col]], na.rm=TRUE),
+              sd = sd(x[[col]], na.rm=TRUE),
+              number = length(x[[col]]))
+          }
+          data_sum<-ddply(data, groupnames, .fun=summary_func,
+                          varname)
+          data_sum <- rename(data_sum, c("mean" = varname))
+          return(data_sum)
+        }
+        
+        df_alledu <- data_summary(fil_dat, varname="waitingdays", 
+                                  groupnames=c("education"))
+        df_alledu$waitinglabel <- daystodate(df_alledu$waitingdays)
+        p_alledu <- ggplot(df_alledu, aes(x=education, y=waitingdays, fill = education)) + 
+          geom_bar(stat="identity", 
+                   position=position_dodge()) +
+          geom_errorbar(aes(ymin=waitingdays-sd, ymax=waitingdays+sd), width=.2,
+                        position=position_dodge(.9)) +
+          geom_text(aes(label = waitinglabel), vjust=-1, position = position_dodge(0.9), family="TH SarabunPSK") +
+          geom_text(aes(label = number), vjust="bottom", position = position_stack(vjust = 0), family="TH SarabunPSK") +
+          theme(text=element_text(size=16, family="TH SarabunPSK"),
+                panel.background = element_blank(),axis.line = element_line(colour = "black")) +
+          labs(title="ระหว่างปริญญา", x="ระดับการศึกษา", y = "ระยะเวลารอบรรจุ (วัน)") +
+          scale_fill_manual(values=c('#999999','#E69F00'))
+        print(p_alledu)
+        
+        
+        #X2รอบรรจุ กับได้งานแล้ว
+       
+        fil_dat$jobsituation <- ifelse(grepl("รอบรรจุ", fil_dat$สถานะ), "waiting", "employed")
+        df_allwait <- data_summary(fil_dat, varname="waitingdays", 
+                                  groupnames=c("education", "jobsituation"))
+        df_allwait$waitinglabel <- daystodate(df_allwait$waitingdays)
+        
+        p_allwait <- ggplot(df_allwait, aes(x=interaction(education, jobsituation), y=waitingdays, fill = (education))) + 
+          geom_bar(stat="identity", 
+                   position=position_dodge()) +
+          geom_errorbar(aes(ymin=waitingdays-sd, ymax=waitingdays+sd), width=.2,
+                        position=position_dodge(.9)) +
+          geom_text(aes(label = waitinglabel), vjust=-1, position = position_dodge(0.9), family="TH SarabunPSK") +
+          geom_text(aes(label = number), vjust="bottom", position = position_stack(vjust = 0), family="TH SarabunPSK") +
+          theme(text=element_text(size=16, family="TH SarabunPSK"),
+                panel.background = element_blank(),axis.line = element_line(colour = "black")) +
+          labs(title="ระหว่างปริญญา", x="ระดับการศึกษา", y = "ระยะเวลารอบรรจุ (วัน)") 
+        
+        print(p_allwait)
+
+        #X3 all education by field
+        pattern.type<-c('hdashes', 'blank', 'crosshatch')
+        df_allfieldedu <- data_summary(fil_dat, varname="waitingdays", 
+                                  groupnames=c("education", "fivesubjects"))
+        df_allfieldedu$waitinglabel <- daystodate(df_allfieldedu$waitingdays)
+        p_allfieldedu <- ggplot(df_allfieldedu, aes(x=interaction(education, fivesubjects), y=waitingdays, fill = fivesubjects)) + 
+          geom_bar(stat="identity", 
+                   position=position_dodge()) +
+          geom_errorbar(aes(ymin=waitingdays-sd, ymax=waitingdays+sd), width=.2,
+                        position=position_dodge(.9)) +
+          geom_text(aes(label = waitinglabel), vjust=-1, position = position_dodge(0.9), family="TH SarabunPSK") +
+          geom_text(aes(label = number), vjust="bottom", position = position_stack(vjust = 0), family="TH SarabunPSK") +
+          theme(text=element_text(size=12, family="TH SarabunPSK"),
+                panel.background = element_blank(),axis.line = element_line(colour = "black"),
+                axis.text.x = element_text(angle = 90)) +
+          labs(title="ระหว่างปริญญาตามสาขาวิชา", x="ระดับการศึกษาและสาขาวิชา", y = "ระยะเวลารอบรรจุ (วัน)") 
+          
+        print(p_allfieldedu)
+        write.xlsx(df_allfieldedu[order(df_allfieldedu$fivesubjects),c("education", "fivesubjects", "waitinglabel")], "/Users/ksongsom/OneDrive/IPST/4postgraduate/fivefield.xlsx")
+        
+        #to do
+        
+        #plot subgroup
+        #X4จบในประเทศ กับต่างประเทศ
+        head(fil_dat)
+        df_domwait <- data_summary(fil_dat, varname="waitingdays", 
+                                   groupnames=c("domestic", "jobsituation"))
+        df_domwait$waitinglabel <- daystodate(df_domwait$waitingdays)
+        
+        p_domwait <- ggplot(df_domwait, aes(x=interaction(jobsituation, domestic), y=waitingdays, fill = (domestic))) + 
+          geom_bar(stat="identity", 
+                   position=position_dodge()) +
+          geom_errorbar(aes(ymin=waitingdays-sd, ymax=waitingdays+sd), width=.2,
+                        position=position_dodge(.9)) +
+          geom_text(aes(label = waitinglabel), vjust=-1, position = position_dodge(0.9), family="TH SarabunPSK") +
+          geom_text(aes(label = number), vjust="bottom", position = position_stack(vjust = 0), family="TH SarabunPSK") +
+          theme(text=element_text(size=16, family="TH SarabunPSK"),
+                panel.background = element_blank(),axis.line = element_line(colour = "black")) +
+          labs(title="ในประเทศ กับ นอกประเทศ", x="ระดับการศึกษา", y = "ระยะเวลารอบรรจุ (วัน)") 
+        
+        print(p_domwait)
+        
+          #แต่ละสาขาในกับนอก
+        fivefields <- names(table(fil_dat$fivesubjects))
+        for(i in 1:length(fivefields)){
+        df_domwait_eachfield <- data_summary(fil_dat[fil_dat$fivesubjects == fivefields[i],], varname="waitingdays", 
+                                   groupnames=c("domestic", "jobsituation"))
+        df_domwait_eachfield$waitinglabel <- daystodate(df_domwait_eachfield$waitingdays)
+        
+        p_domwait_eachfield <- ggplot(df_domwait_eachfield, aes(x=interaction(jobsituation, domestic), y=waitingdays, fill = domestic)) + 
+          geom_bar(stat="identity", 
+                   position=position_dodge()) +
+          geom_errorbar(aes(ymin=waitingdays-sd, ymax=waitingdays+sd), width=.2,
+                        position=position_dodge(.9)) +
+          geom_text(aes(label = waitinglabel), vjust=-1, position = position_dodge(0.9), family="TH SarabunPSK") +
+          geom_text(aes(label = number), vjust="bottom", position = position_stack(vjust = 0), family="TH SarabunPSK") +
+          theme(text=element_text(size=16, family="TH SarabunPSK"),
+                panel.background = element_blank(),axis.line = element_line(colour = "black")) +
+          labs(title=paste("ในประเทศ กับ นอกประเทศ", fivefields[i], sep = " " ), x="ระดับการศึกษา", y = "ระยะเวลารอบรรจุ (วัน)") 
+        
+        #print(p_domwait_eachfield)
+        tiff(paste("/Users/ksongsom/OneDrive/IPST/4postgraduate/graph/domestic_international_", fivefields[i], ".tiff", sep = ""), width=20, height=15, units="cm", res=300)
+        print(p_domwait_eachfield)
+        dev.off()
+        }
+"มีหน่วยงานบรรจุ
+รองาน
+TOR ณ สสวท.
+ปฏิบัติงานภาคเอกชน 
+POSTDOC ภายในประเทศ
+POSTDOC ในต่างประเทศ
+เรียนต่อปริญญาเอก
+กำลังศึกษา รองาน
+กำลังศึกษา มีหน่วยงานบรรจุ"
+        
