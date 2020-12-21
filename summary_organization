@@ -1,0 +1,171 @@
+library(openxlsx)
+library(readxl)
+comppath <-("/Users/ksongsom/OneDrive/IPST/1private_company/in_kind/(Draft 1) รายชื่อเหน่วยงานที่ พสวท. สามารถเข้าปฏ_co_revision.xlsx")
+compsheet <- excel_sheets(comppath)
+complist <- lapply(compsheet, read_excel, path = comppath)
+names(complist) <- compsheet
+names(complist)
+complist
+sink("/Users/ksongsom/OneDrive/IPST/1private_company/in_kind/outfile.txt")
+for(i in 1:length(complist)){
+  #i = 1
+#sink("/Users/ksongsom/OneDrive/IPST/1private_company/in_kind/outfile.txt")
+  dat <- complist[[i]]
+  if(!is.na(which(is.na(dat[,1]))[1])){dat <- dat[1:(which(is.na(dat[,1]))[1]-1),]}
+  #case 1-3 government
+  if(i %in% 1:3){
+    cat(paste(i, ". ", names(complist)[i], "\n",sep = ""))
+    for(j in 1:nrow(dat)){
+    #j = 1
+    datj <- dat[j,]
+    line1 <- paste(
+      i, ".", datj$ลำดับ, ". ", 
+      datj$ชื่อหน่วยงาน,
+      sep = ""
+    )
+    line2 <- paste(
+      "สังกัด",
+      datj$สังกัดกระทรวง,
+      sep = " "
+    )
+    line3 <- paste(
+      "พันธกิจ "
+    )
+    line4 <- paste(
+      "\t", gsub("\r\n", "\n\t\t", datj$พันธกิจ),
+      sep = ""
+    )
+    line5 <- paste(
+      "หน่วยงานที่ทำวิจัยและพัฒนาวิทยาศาสตร์และเทคโนโลยี",
+      sep = "" 
+    )
+    line6 <- paste(
+      "\t", gsub("\r\n", "\n\t\t", datj$`ชื่อหน่วยงานที่ทำ R&D/ Science Promotion`),
+      sep = "" 
+    )
+    line7 <- paste(
+      "สาขาวิชาที่คาดว่าเกี่ยวข้อง",
+      datj$สาขาวิชาที่เกี่ยวข้อง,
+      sep = " "
+    )
+    line8 <- paste(
+      "ประวัติการรับบัณฑิตพสวท",
+      datj$ประวัติการรับบัณฑิตพสวท, 
+      sep = " "
+    )
+    line9 <- paste(
+      "แหล่งข้อมูล"
+    )
+    line10 <- paste(
+      "\t", datj$แหล่งข้อมูล,
+      sep = ""
+    )
+    line11 <- paste(
+      "\t", datj[,which(colnames(datj) == "แหล่งข้อมูล")+1],
+      sep = ""
+    )
+    cat(paste(line1, "\n", 
+              "\t", line2, "\n",
+              "\t", line3, "\n",
+              "\t", line4, "\n",
+              "\t", line5, "\n",
+              "\t", line6, "\n",
+              "\t", line7, "\n",
+              "\t", line8, "\n",
+              "\t", line9, "\n",
+              "\t", line10, "\n",
+              "\t", ifelse(is.na(line11), "",""), "\n",
+              sep = ""))
+    
+  }}
+  #case 4-5 private
+  #i = 4
+  if(i %in% 4:5){
+    dat <- complist[[i]]
+    fillTheBlanks <- function(inputd){
+      setoutput <- list()
+      k <- 1
+      setoutput[[k]] <- inputd
+      while(k < 1000){
+        k <- k+1
+        inrle <- (as.character(setoutput[[k-1]]))
+        empty <- which(is.na(inrle))
+        inrle[empty] <- inrle[empty-1] 
+        setoutput[[k]] <- inrle
+      }
+      return(setoutput[[1000]])
+    } #function fill the missing
+    
+    #fill the gap for all columns
+    
+    dat <- dat %>% mutate_all(fillTheBlanks)
+    cat(paste(i, ". ", names(complist)[i], "\n",sep = ""))
+    for(j in 1:nrow(dat)){
+    #j = 2
+    #j = 42
+    datj <- dat[j,]
+    line0 <- paste(
+      datj$กลุ่ม,
+      sep = ""
+    )
+    line1 <- paste(
+      i, ".", datj$ลำดับ, ". ", 
+      datj$ชื่อหน่วยงาน,
+      sep = ""
+    )
+    line5 <- paste(
+      "หน่วยงานที่ทำวิจัยและพัฒนาวิทยาศาสตร์และเทคโนโลยี",
+      sep = "" 
+    )
+    line6 <- paste(
+      "\t", i, ".", datj$ลำดับ, ". ", "\t",
+      gsub("\r\n", "\n", datj$`ชื่อหน่วยงานที่ทำ R&D/Science Promotion`),
+      sep = "" 
+    )
+    line7 <- paste(
+      "สาขาวิชาที่คาดว่าเกี่ยวข้อง",
+      datj$สาขาวิชาที่คาดว่าจะเกี่ยวข้อง,
+      sep = " "
+    )
+    line9 <- paste(
+      "แหล่งข้อมูล"
+    )
+    line10 <- paste(
+      "\t", datj$แหล่งข้อมูล,
+      sep = ""
+    )
+    if((datj$กลุ่ม %in% dat$กลุ่ม[j-1])){
+      if(datj$ชื่อหน่วยงาน   %in% dat$ชื่อหน่วยงาน[j-1]){
+        cat(paste(
+          #"\t", line5, "\n",
+          "\t", "-", gsub(".*\\\t", "", line6), "\n",
+          "\t\t", line7, "\n",
+          "\t\t", line9, "\n",
+          "\t\t", line10, "\n",
+          sep = ""))
+        
+    }else{
+      cat(paste(
+                line1, "\n", 
+                "\t", line5, "\n",
+                "\t", "-", gsub(".*\\\t", "", line6), "\n",
+                "\t\t", line7, "\n",
+                "\t\t", line9, "\n",
+                "\t\t", line10, "\n",
+                sep = ""))
+    }}else{
+
+      cat(paste(line0, "\n",
+                line1, "\n", 
+                "\t", line5, "\n",
+                "\t", "-", gsub(".*\\\t", "", line6), "\n",
+                "\t\t", line7, "\n",
+                "\t\t", line9, "\n",
+                "\t\t", line10, "\n",
+                sep = ""))
+    }
+    
+  }}
+}
+sink(NULL)
+
