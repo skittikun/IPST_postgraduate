@@ -1,0 +1,32 @@
+library(openxlsx)
+library(dplyr)
+
+dat <- read.xlsx("/Users/ksongsom/OneDrive/IPST/1private_company/Dec25_meeting/ทำรายชื่อหน่วยงานที่ส่งบัณฑิตไปสมัครงาน_1.xlsx", sheet = 3)
+head(dat)
+dat <- dat[!is.na(dat$main_org), ]
+
+udat <- dat %>% group_by(main_org, sub_org) %>% 
+  summarise(num = sum(number, na.rm = T))
+unique(udat$main_org)
+
+head(udat)
+sink("/Users/ksongsom/OneDrive/IPST/1private_company/Dec25_meeting/circle_label.txt")
+for(i in 1:length(unique(udat$main_org))){
+  #i = 1
+  datplot <- udat[udat$main_org %in% unique(udat$main_org)[i],]
+  newdatplot <- (as.data.frame(datplot[order(datplot$num, decreasing = T),-1]))
+  moverow <- which(newdatplot$sub_org == "อื่นๆ")
+  if(nrow(newdatplot[moverow,]) != 0){
+    neworder <- c(1:nrow(newdatplot), moverow) #reorder อื่นๆ
+    newdatplot[neworder[-moverow],]
+    newdattoplot <- newdatplot[neworder[-moverow],]
+  }else{
+    newdattoplot <- newdatplot
+  }
+  cat(paste(unique(udat$main_org)[i], " ", sum(newdatplot$num, na.rm = T), " คน", "\n", sep = ""))
+  for(j in 1:nrow(newdattoplot)){
+    cat(paste(newdattoplot[j,1], newdattoplot[j,2], "\n", sep = "\t"))
+  }
+  cat("\n")
+}
+sink()
