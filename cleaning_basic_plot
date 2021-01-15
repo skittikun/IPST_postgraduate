@@ -5,19 +5,20 @@ library(plyr)
 library(extrafont)
 
 options(stringsAsFactors = F)
-font_import() #load Thai font only first time
-loadfonts()
+#font_import() #load Thai font only first time
+#loadfonts()
 
-raw <- read.xlsx("/Users/ksongsom/OneDrive/IPST/4postgraduate/data_mod/สรุปจำนวนบัณฑิตที่รายงานตัว ตค62-กย63/0_ตารางสรุป.xlsx", sheet = 2, startRow =2, detectDates = T)
+#raw <- read.xlsx("/Users/ksongsom/OneDrive/IPST/4postgraduate/data_mod/สรุปจำนวนบัณฑิตที่รายงานตัว ตค62-กย63/0_ตารางสรุป.xlsx", sheet = 2, startRow =2, detectDates = T)
+raw <- read.xlsx("/Users/ksongsom/OneDrive/IPST/4postgraduate/data_mod/รายชื่อข้อมูลติดต่อ_เอก_รองาน_13-1-64.xlsx", sheet = 1, startRow =2, detectDates = T)
 head(raw)
+head(newraw)
 str(raw)
 
 #cleaning 
 #clean space
 gsub("^ ", "", gsub(" $", "", (" Team Name ")))
 raw <- as.data.frame(apply(raw,2,function(x)gsub("^ ", "", gsub(" $", "", (x)))))
-raw <- as.data.frame(apply(raw,2,function(x)gsub("^ ", "", gsub(" $", "", (x)))))
-
+newraw <- as.data.frame(apply(newraw,2,function(x)gsub("^ ", "", gsub(" $", "", (x)))))
 
 #Questions
 end_date <- as.Date(Sys.Date())#as.Date("2020-09-30")
@@ -27,7 +28,8 @@ end_date <- as.Date(Sys.Date())#as.Date("2020-09-30")
   
   table(raw$`สาขาวิชา`)
   sum(is.na(raw$`สาขาวิชา`)) #check if missing
-  allsubject <- unique(raw$`สาขาวิชา`) #119 deep subjects
+  allsubject <- unique(raw$`สาขาวิชา`)
+  length(allsubject) #119 deep subjects
   engsubject <- allsubject[grepl(paste(c(LETTERS, letters), collapse = "|"), allsubject)]
         
     #update keyword for subject
@@ -63,7 +65,9 @@ end_date <- as.Date(Sys.Date())#as.Date("2020-09-30")
           "PhD Medicine (Imaging)",
           "Bioengineering",
           "Pathology and Medical Biology",
-          "Clinical Medicine Research"
+          "Clinical Medicine Research",
+          "Animal science",
+          "Molecular biology"
           )
         bio_th <- c("กายวิภาคศาสตร์และชีววิทยาโครงสร้าง (นานาชาติ)",
           "อายุรศาสตร์เขตร้อน",
@@ -105,7 +109,8 @@ end_date <- as.Date(Sys.Date())#as.Date("2020-09-30")
           )
         mat_th <- c("คณิตศาสตร์",
           "คณิตศาสตร์ประยุกต์",
-          "คณิตศาสตร์ประยุกต์และวิทยาการคณนา"
+          "คณิตศาสตร์ประยุกต์และวิทยาการคณนา",
+          "คณิตศาสตร์บริสุทธิ์"
           )
         
         #Physics
@@ -119,7 +124,8 @@ end_date <- as.Date(Sys.Date())#as.Date("2020-09-30")
           "Theoretical Physics"
           )
         phy_th <- c("ฟิสิกส์",
-          "วิศวกรรมนิวเคลียร์"
+          "วิศวกรรมนิวเคลียร์",
+          "ฟิสิกส์ดาราศาสตร์" 
           )
         #Chemistry
         che_en <- c("Materials Science",
@@ -172,7 +178,7 @@ end_date <- as.Date(Sys.Date())#as.Date("2020-09-30")
         
         #check all deep subjects in the list
         tochecksub <- c(bio_en, bio_th, mat_en, mat_th, phy_en, phy_th, che_en, che_th, geo_en, geo_th, cro_en, cro_th)
-        all(tochecksub %in% allsubject)
+        all(allsubject %in% tochecksub)
         allsubject[!(allsubject %in% tochecksub)] #check which one needs to be updated
         
         
@@ -198,7 +204,8 @@ end_date <- as.Date(Sys.Date())#as.Date("2020-09-30")
                      )
         mat_res <- c("A Framework for Synthesizing Transactional Database Implementations in a Proof Assistant",
                      "Innovation and Technology Management, Financial Analysis, Fin-Tech",
-                     "Numerical weather modeling"
+                     "Numerical weather modeling",
+                     "Innovation and Technology Management, Financial Analysis, Fin-Tech"
                      )
         phy_res <- c("Analog and Radio-Frequency Integrated Circuit Design - Radio-Frequency and mm-wave Power Amplifier",
                      "Silicone Optical Technology (SOT), Flow injection analysis, compact optical device, polydimethylsiloxane (PDMS), silicone, iron determination, 3D printing, on-site analysis, high sensitive device")
@@ -227,8 +234,8 @@ end_date <- as.Date(Sys.Date())#as.Date("2020-09-30")
         table(raw$fivesubjects)
         
         #calculate waiting time
-        raw$waitingdays <- as.integer(difftime(end_date, raw$`วันที่รายงานตัว`, units = "days"))
-        as.year(raw$waitingdays)
+        raw$waitingdays <- as.integer(difftime(end_date, raw$วันที่รายงานตัว, units = "days"))
+        
         raw$`วันที่รายงานตัว`
         
         daystodate <- function(indate){
@@ -280,9 +287,9 @@ end_date <- as.Date(Sys.Date())#as.Date("2020-09-30")
                    position=position_dodge()) +
           geom_errorbar(aes(ymin=waitingdays-sd, ymax=waitingdays+sd), width=.2,
                         position=position_dodge(.9)) +
-          geom_text(aes(label = waitinglabel), vjust=-1, position = position_dodge(0.9), family="TH SarabunPSK") +
-          geom_text(aes(label = number), vjust="bottom", position = position_stack(vjust = 0), family="TH SarabunPSK") +
-          theme(text=element_text(size=16, family="TH SarabunPSK"),
+          geom_text(aes(label = waitinglabel), vjust=-1, position = position_dodge(0.9), family="TH Sarabun New") +
+          geom_text(aes(label = number), vjust="bottom", position = position_stack(vjust = 0), family="TH Sarabun New") +
+          theme(text=element_text(size=16, family="TH Sarabun New"),
                 panel.background = element_blank(),axis.line = element_line(colour = "black")) +
           labs(title="ระหว่างปริญญา", x="ระดับการศึกษา", y = "ระยะเวลารอบรรจุ (วัน)") +
           scale_fill_manual(values=c('#999999','#E69F00'))
@@ -301,9 +308,9 @@ end_date <- as.Date(Sys.Date())#as.Date("2020-09-30")
                    position=position_dodge()) +
           geom_errorbar(aes(ymin=waitingdays-sd, ymax=waitingdays+sd), width=.2,
                         position=position_dodge(.9)) +
-          geom_text(aes(label = waitinglabel), vjust=-1, position = position_dodge(0.9), family="TH SarabunPSK") +
-          geom_text(aes(label = number), vjust="bottom", position = position_stack(vjust = 0), family="TH SarabunPSK") +
-          theme(text=element_text(size=16, family="TH SarabunPSK"),
+          geom_text(aes(label = waitinglabel), vjust=-1, position = position_dodge(0.9), family="TH Sarabun New") +
+          geom_text(aes(label = number), vjust="bottom", position = position_stack(vjust = 0), family="TH Sarabun New") +
+          theme(text=element_text(size=16, family="TH Sarabun New"),
                 panel.background = element_blank(),axis.line = element_line(colour = "black")) +
           labs(title="ระหว่างปริญญา", x="ระดับการศึกษา", y = "ระยะเวลารอบรรจุ (วัน)") 
         
@@ -319,15 +326,15 @@ end_date <- as.Date(Sys.Date())#as.Date("2020-09-30")
                    position=position_dodge()) +
           geom_errorbar(aes(ymin=waitingdays-sd, ymax=waitingdays+sd), width=.2,
                         position=position_dodge(.9)) +
-          geom_text(aes(label = waitinglabel), vjust=-1, position = position_dodge(0.9), family="TH SarabunPSK") +
-          geom_text(aes(label = number), vjust="bottom", position = position_stack(vjust = 0), family="TH SarabunPSK") +
-          theme(text=element_text(size=12, family="TH SarabunPSK"),
+          geom_text(aes(label = waitinglabel), vjust=-1, position = position_dodge(0.9), family="TH Sarabun New") +
+          geom_text(aes(label = number), vjust="bottom", position = position_stack(vjust = 0), family="TH Sarabun New") +
+          theme(text=element_text(size=12, family="TH Sarabun New"),
                 panel.background = element_blank(),axis.line = element_line(colour = "black"),
                 axis.text.x = element_text(angle = 90)) +
           labs(title="ระหว่างปริญญาตามสาขาวิชา", x="ระดับการศึกษาและสาขาวิชา", y = "ระยะเวลารอบรรจุ (วัน)") 
           
         print(p_allfieldedu)
-        write.xlsx(df_allfieldedu[order(df_allfieldedu$fivesubjects),c("education", "fivesubjects", "waitinglabel")], "/Users/ksongsom/OneDrive/IPST/4postgraduate/fivefield.xlsx")
+        #write.xlsx(df_allfieldedu[order(df_allfieldedu$fivesubjects),c("education", "fivesubjects", "waitinglabel")], "/Users/ksongsom/OneDrive/IPST/4postgraduate/fivefield.xlsx")
         
         #to do
         
@@ -343,9 +350,9 @@ end_date <- as.Date(Sys.Date())#as.Date("2020-09-30")
                    position=position_dodge()) +
           geom_errorbar(aes(ymin=waitingdays-sd, ymax=waitingdays+sd), width=.2,
                         position=position_dodge(.9)) +
-          geom_text(aes(label = waitinglabel), vjust=-1, position = position_dodge(0.9), family="TH SarabunPSK") +
-          geom_text(aes(label = number), vjust="bottom", position = position_stack(vjust = 0), family="TH SarabunPSK") +
-          theme(text=element_text(size=16, family="TH SarabunPSK"),
+          geom_text(aes(label = waitinglabel), vjust=-1, position = position_dodge(0.9), family="TH Sarabun New") +
+          geom_text(aes(label = number), vjust="bottom", position = position_stack(vjust = 0), family="TH Sarabun New") +
+          theme(text=element_text(size=16, family="TH Sarabun New"),
                 panel.background = element_blank(),axis.line = element_line(colour = "black")) +
           labs(title="ในประเทศ กับ นอกประเทศ", x="ระดับการศึกษา", y = "ระยะเวลารอบรรจุ (วัน)") 
         
@@ -363,9 +370,9 @@ end_date <- as.Date(Sys.Date())#as.Date("2020-09-30")
                    position=position_dodge()) +
           geom_errorbar(aes(ymin=waitingdays-sd, ymax=waitingdays+sd), width=.2,
                         position=position_dodge(.9)) +
-          geom_text(aes(label = waitinglabel), vjust=-1, position = position_dodge(0.9), family="TH SarabunPSK") +
-          geom_text(aes(label = number), vjust="bottom", position = position_stack(vjust = 0), family="TH SarabunPSK") +
-          theme(text=element_text(size=16, family="TH SarabunPSK"),
+          geom_text(aes(label = waitinglabel), vjust=-1, position = position_dodge(0.9), family="TH Sarabun New") +
+          geom_text(aes(label = number), vjust="bottom", position = position_stack(vjust = 0), family="TH Sarabun New") +
+          theme(text=element_text(size=16, family="TH Sarabun New"),
                 panel.background = element_blank(),axis.line = element_line(colour = "black")) +
           labs(title=paste("ในประเทศ กับ นอกประเทศ", fivefields[i], sep = " " ), x="ระดับการศึกษา", y = "ระยะเวลารอบรรจุ (วัน)") 
         
@@ -374,13 +381,5 @@ end_date <- as.Date(Sys.Date())#as.Date("2020-09-30")
         print(p_domwait_eachfield)
         dev.off()
         }
-"มีหน่วยงานบรรจุ
-รองาน
-TOR ณ สสวท.
-ปฏิบัติงานภาคเอกชน 
-POSTDOC ภายในประเทศ
-POSTDOC ในต่างประเทศ
-เรียนต่อปริญญาเอก
-กำลังศึกษา รองาน
-กำลังศึกษา มีหน่วยงานบรรจุ"
+
         
