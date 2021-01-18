@@ -2,7 +2,9 @@ library(openxlsx)
 library(dplyr)
 
 dat <- read.xlsx("/Users/ksongsom/OneDrive/IPST/1private_company/Dec25_meeting/ทำรายชื่อหน่วยงานที่ส่งบัณฑิตไปสมัครงาน_1.xlsx", sheet = 3)
+dat <- read.xlsx("/Users/ksongsom/OneDrive/IPST/1private_company/Dec25_meeting/TOR_summary_job.xlsx", sheet = 7)
 head(dat)
+table(dat$main_org)
 dat <- dat[!is.na(dat$main_org), ]
 
 udat <- dat %>% group_by(main_org, sub_org) %>% 
@@ -10,11 +12,33 @@ udat <- dat %>% group_by(main_org, sub_org) %>%
 unique(udat$main_org)
 
 head(udat)
-sink("/Users/ksongsom/OneDrive/IPST/1private_company/Dec25_meeting/circle_label.txt")
-for(i in 1:length(unique(udat$main_org))){
+
+#by education
+dat$education <- dat$`ระดับการศึกษา`
+
+eudat <- dat %>% group_by(Main_org_education, main_org, sub_org, education) %>% 
+  summarise(num = sum(number, na.rm = T))
+unique(eudat$main_org)
+
+head(eudat)
+
+dim(udat)
+dim(eudat)
+
+head(eudat)
+
+#sink("/Users/ksongsom/OneDrive/IPST/1private_company/Dec25_meeting/circle_label.txt")
+sink("/Users/ksongsom/OneDrive/IPST/1private_company/Dec25_meeting/circle_label_TOR_2.txt")
+for(i in 1:length(unique(eudat$main_org))){
   #i = 1
-  datplot <- udat[udat$main_org %in% unique(udat$main_org)[i],]
-  newdatplot <- (as.data.frame(datplot[order(datplot$num, decreasing = T),-1]))
+  datplot1 <- udat[udat$main_org %in% unique(udat$main_org)[i],]
+  datplot2 <- eudat[eudat$main_org %in% unique(eudat$main_org)[i],]
+  
+  newdatplot2 <- datplot2 %>% group_by(education) %>% summarise(sum_n = sum(num, na.rm = T))
+  newdatplot3 <- datplot2 %>% group_by(sub_org, education) %>% summarise(sum_n = sum(num, na.rm = T))
+  #add degree levels in parenthesis
+  
+  newdatplot <- (as.data.frame(datplot1[order(datplot1$num, decreasing = T),-1]))
   moverow <- which(newdatplot$sub_org == "อื่นๆ")
   if(nrow(newdatplot[moverow,]) != 0){
     neworder <- c(1:nrow(newdatplot), moverow) #reorder อื่นๆ
@@ -23,9 +47,35 @@ for(i in 1:length(unique(udat$main_org))){
   }else{
     newdattoplot <- newdatplot
   }
-  cat(paste(unique(udat$main_org)[i], " ", sum(newdatplot$num, na.rm = T), " คน", "\n", sep = ""))
+  cat(paste(unique(udat$main_org)[i], " ", sum(newdatplot$num, na.rm = T),
+            " (", ifelse(is.na(newdatplot2$sum_n[1]), 0, newdatplot2$sum_n[1]), "/", 
+            ifelse(is.na(newdatplot2$sum_n[2]), 0, newdatplot2$sum_n[2]),
+            ")", " คน", 
+            "\n", sep = ""))
+  
+  #function to test numeric0
+  is.numeric0 <- function(x) {
+    identical(x, numeric(0))
+  }
+  num_par <- c()
+  for(k in 1:nrow(newdattoplot)){
+    
+    master_n <- newdatplot3[newdatplot3$sub_org == newdattoplot[k,]$sub_org & 
+                  newdatplot3$education == "ปริญญาโท",]$sum_n
+    doctor_n <- newdatplot3[newdatplot3$sub_org == newdattoplot[k,]$sub_org & 
+                              newdatplot3$education == "ปริญญาเอก",]$sum_n
+    
+    num_par <- c(num_par, paste("(", ifelse(is.numeric0(master_n), 0, master_n), "/", 
+                                ifelse(is.numeric0(doctor_n), 0, doctor_n),
+                                ")", sep = ""))
+  }
+
+  newdattoplot <- cbind.data.frame(newdattoplot, num_par)
+  
   for(j in 1:nrow(newdattoplot)){
-    cat(paste(newdattoplot[j,1], newdattoplot[j,2], "\n", sep = "\t"))
+    cat(paste(newdattoplot[j,1], "\t", newdattoplot[j,2], " ",
+              newdattoplot[j,3], 
+              "\n", sep = ""))
   }
   cat("\n")
 }
